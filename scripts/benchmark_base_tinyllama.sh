@@ -18,4 +18,4 @@ accelerate launch -m lm_eval \
     --device "$DEVICE" \
     --batch_size "$BATCH_SIZE" \
     --max_batch_size "$MAX_BATCH_SIZE" \
-    --output_path "$OUTPUT_DIR/results_base.json"
+    --output_path "$OUTPUT_DIR/base_tinyllama.json"
