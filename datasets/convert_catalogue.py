@@ -324,55 +324,60 @@ TEMPLATES = [
 
 
 def clean_bullets(bullets):
-    """
-    Convert a bullet points list (string) into a cleaned, comma-separated sentence.
-    Removes duplicates and trims whitespace.
-    """
-    # If bullets are stored as string representation of list, e.g., "['a', 'b']"
-    if isinstance(bullets, str):
-        try:
-            bullets_list = eval(bullets)
-        except:
-            bullets_list = bullets.split(',')  # fallback
-    else:
-        bullets_list = bullets
+    """Safely clean bullet points into a single string."""
+    # Convert to string first (avoid int/float errors)
+    if bullets is None:
+        return ""
+    bullets = str(bullets)
 
-    # Remove duplicates and strip whitespace
-    bullets_list = [b.strip() for b in bullets_list]
+    # Split on common delimiters (., •, -, \n)
+    bullets_list = re.split(r"[•\-\n\.]", bullets)
+
+    # Clean and deduplicate
+    bullets_list = [b.strip() for b in bullets_list if b.strip()]
     bullets_list = list(dict.fromkeys(bullets_list))  # preserve order
 
-    return ', '.join(bullets_list)
+    return " | ".join(bullets_list)
 
-def generate_corpus(df, templates, n_per_template=20, random_seed=42):
+import re
+
+def generate_corpus(df, templates, random_seed=42):
     """
-    Generate a text corpus by applying templates to random rows from df.
-    Randomizes the order of the final corpus.
+    For every row in df, randomly select one template and fill it.
+    Returns a fully randomized corpus.
     """
     random.seed(random_seed)
     corpus = []
 
-    for template in templates:
-        # Sample n_per_template rows randomly
-        sampled_df = df.sample(n=n_per_template, random_state=random_seed)
-        for _, row in sampled_df.iterrows():
-            # Clean bullets
-            bullets_cleaned = clean_bullets(row['BULLET_POINTS'])
-            
-            # Fill template (preprocess description to avoid .lower() errors)
-            text = template.format(
-                title=row['TITLE'],
-                bullet_points=bullets_cleaned,
-                description=row['DESCRIPTION']  # preprocess here if needed
-            )
-            corpus.append(text)
+    for _, row in df.iterrows():
+        # Choose a random template for this row
+        template = random.choice(templates)
 
-    # Shuffle the entire corpus to randomize order across templates
+        # Safely get values as strings
+        title = str(row.get("TITLE", ""))
+        description = str(row.get("DESCRIPTION", ""))
+        bullet_points = row.get("BULLET_POINTS", "")
+
+        # Clean bullet points
+        bullets_cleaned = clean_bullets(bullet_points)
+
+        # Fill the chosen template
+        text = template.format(
+            title=title,
+            bullet_points=bullets_cleaned,
+            description=description
+        )
+
+        corpus.append(text)
+
+    # Final shuffle (optional, to mix rows even more)
     random.shuffle(corpus)
 
     return corpus
 
 # Example usage
-corpus = generate_corpus(df, TEMPLATES, n_per_template=20)
+corpus = generate_corpus(df, TEMPLATES)
+
 
 # Optional: Convert to single string
 corpus_text = "\n".join(corpus)
